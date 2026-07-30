@@ -1,0 +1,34 @@
+@import "tailwindcss";
+
+/* Light mode overrides for Tailwind v4 */
+.light {
+  --color-slate-950: #f8fafc; /* page background */
+  --color-slate-900: #ffffff; /* cards and panels background */
+  --color-slate-850: #f1f5f9; /* table row hover / selected background */
+  --color-slate-800: #e2e8f0; /* borders */
+  --color-slate-700: #cbd5e1; /* intermediate borders */
+  --color-slate-600: #94a3b8; /* slightly muted borders / icons */
+  --color-slate-500: #64748b; /* muted labels / text */
+  --color-slate-400: #334155; /* regular body text / subheadings - changed for strong contrast */
+  --color-slate-300: #1e293b; /* emphasized text - changed for strong contrast */
+  --color-slate-200: #0f172a; /* title text - changed for maximum legibility */
+  --color-slate-100: #020617; /* maximum dark headings */
+  --color-white: #020617;      /* text-white becomes extremely dark blue-slate */
+
+  /* Ensure standard elements have perfect high contrast */
+  --color-teal-400: #0d9488;     /* teal-600 */
+  --color-teal-500: #0f766e;     /* teal-700 */
+  --color-emerald-400: #16a34a;  /* emerald-600 */
+  --color-rose-400: #dc2626;     /* rose-600 */
+  --color-orange-400: #ea580c;   /* orange-600 */
+  --color-amber-400: #d97706;    /* amber-600 */
+  --color-red-400: #dc2626;      /* red-600 */
+
+  /* Prevent very dark background boxes from staying black */
+  --color-rose-950: #ffe4e6;     /* rose-100 */
+  --color-rose-900: #fecdd3;     /* rose-200 */
+  --color-teal-950: #ccfbf1;     /* teal-100 */
+  --color-emerald-950: #dcfce7;  /* emerald-100 */
+  --color-amber-950: #fef3c7;    /* amber-100 */
+  --color-amber-900: #fde68a;    /* amber-200 */
+}

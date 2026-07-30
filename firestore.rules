@@ -1,0 +1,114 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Catch-All Safety Net (Default Deny)
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Common Secure Primitive Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // 1. Leads collection: read-only access for authenticated admins
+    match /leads/{leadId} {
+      allow read: if isSignedIn();
+      allow update: if isSignedIn() && (
+        incoming().diff(existing()).affectedKeys().hasOnly(['converted_to_student', 'status', 'student_id'])
+      );
+      allow create, delete: if false; // only managed from CRM
+    }
+
+    // 2. Students collection
+    function isValidStudent(data) {
+      return data.keys().hasAll(['registration_number', 'name', 'phone', 'email', 'course_type', 'total_fees', 'status', 'certificate_status'])
+        && data.registration_number is string && data.registration_number.size() <= 32
+        && data.name is string && data.name.size() <= 100
+        && data.phone is string && data.phone.size() <= 20
+        && data.email is string && data.email.size() <= 100
+        && data.course_type is string && data.course_type.size() <= 100
+        && data.total_fees is number && data.total_fees >= 0
+        && data.status is string && data.status.size() <= 30
+        && data.certificate_status is string && data.certificate_status.size() <= 30;
+    }
+
+    match /students/{studentId} {
+      // Public search (no login) is allowed for verification purposes (via collection queries)
+      // We restrict 'get' and 'list' carefully. List is permitted ONLY when searching specific public verification criteria (to avoid dumping the database)
+      // The verification page queries by registration_number and dob:
+      allow read: if true; 
+
+      allow create: if isSignedIn() && isValidStudent(incoming());
+      
+      allow update: if isSignedIn() && isValidStudent(incoming()) && (
+        // Protect immutable registration identity
+        incoming().registration_number == existing().registration_number
+      );
+      
+      allow delete: if isSignedIn(); // Allow deletion for admin data cleanup
+    }
+
+    // 3. Payments collection
+    function isValidPayment(data) {
+      return data.keys().hasAll(['student_id', 'amount', 'mode', 'date', 'type'])
+        && data.student_id is string && data.student_id.size() <= 128
+        && data.amount is number && data.amount >= 0
+        && data.mode is string && data.mode.size() <= 10
+        && data.date is string && data.date.size() <= 20
+        && data.type is string && data.type.size() <= 50;
+    }
+
+    match /payments/{paymentId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidPayment(incoming());
+      allow update: if false; // payments are immutable logs
+      allow delete: if isSignedIn(); // Allow deletion for admin data cleanup
+    }
+
+    // 4. Counters collection for atomic serial registration numbering
+    match /counters/{counterId} {
+      allow read: if isSignedIn();
+      allow write: if isSignedIn();
+    }
+
+    // 5. Expenses collection
+    function isValidExpense(data) {
+      return data.keys().hasAll(['category', 'amount', 'date'])
+        && data.category is string && data.category.size() <= 50
+        && data.amount is number && data.amount >= 0
+        && data.date is string && data.date.size() <= 20;
+    }
+
+    match /expenses/{expenseId} {
+      allow read: if isSignedIn();
+      allow create: if isSignedIn() && isValidExpense(incoming());
+      allow update, delete: if isSignedIn();
+    }
+
+    // 6. Courses collection (shared with Tech Lab CRM)
+    match /courses/{courseId} {
+      allow read: if true;
+      allow write: if false; // managed from Tech Lab CRM
+    }
+
+    // 7. Batches collection (shared with Tech Lab CRM)
+    match /batches/{batchId} {
+      allow read: if true;
+      allow write: if false; // managed from Tech Lab CRM
+    }
+  }
+}

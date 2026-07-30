@@ -1,0 +1,88 @@
+{
+  "entities": {
+    "Lead": {
+      "title": "Lead",
+      "description": "A lead record from the CRM app",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "course_interest": { "type": "string" },
+        "converted_to_student": { "type": "boolean" },
+        "status": { "type": "string" },
+        "student_id": { "type": "string" }
+      }
+    },
+    "Student": {
+      "title": "Student",
+      "description": "An admitted student record",
+      "type": "object",
+      "properties": {
+        "student_id": { "type": "string" },
+        "registration_number": { "type": "string" },
+        "linked_lead_id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "address": { "type": "string" },
+        "dob": { "type": "string" },
+        "admission_date": { "type": "string" },
+        "course_type": { "type": "string" },
+        "batch_start_date": { "type": "string" },
+        "total_fees": { "type": "number" },
+        "admission_fees": { "type": "number" },
+        "remaining_fees": { "type": "number" },
+        "status": { "type": "string" },
+        "certificate_status": { "type": "string" },
+        "certificate_issue_date": { "type": "string" },
+        "created_timestamp": { "type": "string" }
+      },
+      "required": ["registration_number", "name", "phone", "email", "course_type", "total_fees", "status"]
+    },
+    "Payment": {
+      "title": "Payment",
+      "description": "A fee payment record",
+      "type": "object",
+      "properties": {
+        "payment_id": { "type": "string" },
+        "student_id": { "type": "string" },
+        "amount": { "type": "number" },
+        "mode": { "type": "string" },
+        "date": { "type": "string" },
+        "type": { "type": "string" },
+        "note": { "type": "string" },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["student_id", "amount", "mode", "date", "type"]
+    },
+    "Counter": {
+      "title": "Counter",
+      "description": "Auto-increment sequential counter for unique registration IDs",
+      "type": "object",
+      "properties": {
+        "current_seq": { "type": "number" }
+      },
+      "required": ["current_seq"]
+    }
+  },
+  "firestore": {
+    "/leads/{leadId}": {
+      "schema": "Lead",
+      "description": "Reads lead data to convert them to students"
+    },
+    "/students/{studentId}": {
+      "schema": "Student",
+      "description": "Core student records"
+    },
+    "/payments/{paymentId}": {
+      "schema": "Payment",
+      "description": "Historical student payments"
+    },
+    "/counters/{counterId}": {
+      "schema": "Counter",
+      "description": "Counter for student registration numbers"
+    }
+  }
+}

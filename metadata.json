@@ -1,0 +1,6 @@
+{
+  "name": "Tech Lab Academy - Admission & Fees Portal",
+  "description": "Admission & Fees Portal for Tech Lab Academy connected to the Tech Lab CRM project.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
