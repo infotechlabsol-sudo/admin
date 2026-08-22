@@ -9,10 +9,17 @@
         "phone": { "type": "string" },
         "email": { "type": "string" },
         "address": { "type": "string" },
+        "source": { "type": "string" },
         "course_interest": { "type": "string" },
+        "class_mode": { "type": "string" },
+        "dob": { "type": "string" },
+        "assigned_batch": { "type": "string" },
+        "lead_score": { "type": "string" },
+        "tags": { "type": "string" },
         "converted_to_student": { "type": "boolean" },
         "status": { "type": "string" },
-        "student_id": { "type": "string" }
+        "student_id": { "type": "string" },
+        "created_timestamp": { "type": "string" }
       }
     },
     "Student": {

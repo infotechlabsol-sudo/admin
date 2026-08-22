@@ -1,19 +1,280 @@
-import React, { useState } from "react";
-import { collection, getDocs, doc, deleteDoc } from "firebase/firestore";
+import React, { useState, useRef } from "react";
+import { collection, getDocs, doc, deleteDoc, setDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
-import { Sliders, ShieldAlert, Trash2, Database, AlertTriangle, CheckCircle } from "lucide-react";
+import {
+  Sliders,
+  ShieldAlert,
+  Trash2,
+  Database,
+  AlertTriangle,
+  CheckCircle,
+  Download,
+  Upload,
+  FileJson,
+  Info,
+  Archive,
+  RefreshCw,
+  X,
+  FileSpreadsheet
+} from "lucide-react";
 
 interface SettingsProps {
   adminEmail?: string | null;
 }
 
+interface BackupPayload {
+  backup_date?: string;
+  students?: Array<{ id?: string; [key: string]: any }>;
+  payments?: Array<{ id?: string; [key: string]: any }>;
+  expenses?: Array<{ id?: string; [key: string]: any }>;
+  courses?: Array<{ id?: string; [key: string]: any }>;
+  batches?: Array<{ id?: string; [key: string]: any }>;
+}
+
 export default function Settings({ adminEmail }: SettingsProps) {
+  // Clear Demo Data states
   const [typedConfirm, setTypedConfirm] = useState("");
   const [isDeleting, setIsDeleting] = useState(false);
-  const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
+  // Backup & Restore states
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [showRestoreModal, setShowRestoreModal] = useState(false);
+  const [backupFileToRestore, setBackupFileToRestore] = useState<{
+    filename: string;
+    data: BackupPayload;
+    counts: {
+      students: number;
+      payments: number;
+      expenses: number;
+      courses: number;
+      batches: number;
+    };
+  } | null>(null);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Notifications
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // 1. Download Complete Backup
+  const handleDownloadBackup = async () => {
+    setIsBackingUp(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      // Fetch all required collections in parallel
+      const [studentsSnap, paymentsSnap, expensesSnap, coursesSnap, batchesSnap] = await Promise.all([
+        getDocs(collection(db, "students")),
+        getDocs(collection(db, "payments")),
+        getDocs(collection(db, "expenses")),
+        getDocs(collection(db, "courses")),
+        getDocs(collection(db, "batches"))
+      ]);
+
+      const students = studentsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const payments = paymentsSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const expenses = expensesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const courses = coursesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      const batches = batchesSnap.docs.map((d) => ({ id: d.id, ...d.data() }));
+
+      const backupData = {
+        backup_date: new Date().toISOString(),
+        students,
+        payments,
+        expenses,
+        courses,
+        batches
+      };
+
+      const jsonString = JSON.stringify(backupData, null, 2);
+      const blob = new Blob([jsonString], { type: "application/json;charset=utf-8;" });
+      const url = URL.createObjectURL(blob);
+      const todayStr = new Date().toISOString().substring(0, 10);
+      const filename = `TechLabAcademy_AdmissionPortal_Backup_${todayStr}.json`;
+
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      setSuccessMessage(
+        `Backup complete: ${students.length} students, ${payments.length} payments, ${expenses.length} expenses, ${courses.length} courses, ${batches.length} batches backed up.`
+      );
+    } catch (err: any) {
+      console.error("Failed to generate backup:", err);
+      setErrorMessage(err.message || "Failed to fetch database collections for backup.");
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  // 2. Select Backup JSON File
+  const handleSelectFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset input so same file can be re-selected if cancelled
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const content = evt.target?.result as string;
+        if (!content || !content.trim()) {
+          setErrorMessage("The selected backup file is empty.");
+          return;
+        }
+
+        let parsed: any;
+        try {
+          parsed = JSON.parse(content);
+        } catch {
+          setErrorMessage("Invalid JSON format: Unable to parse backup content. Please verify the file is a valid JSON document.");
+          return;
+        }
+
+        if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+          setErrorMessage("Invalid backup format: The file must contain a root JSON object.");
+          return;
+        }
+
+        const students = Array.isArray(parsed.students) ? parsed.students : [];
+        const payments = Array.isArray(parsed.payments) ? parsed.payments : [];
+        const expenses = Array.isArray(parsed.expenses) ? parsed.expenses : [];
+        const courses = Array.isArray(parsed.courses) ? parsed.courses : [];
+        const batches = Array.isArray(parsed.batches) ? parsed.batches : [];
+
+        const totalRecords = students.length + payments.length + expenses.length + courses.length + batches.length;
+        if (totalRecords === 0 && !parsed.backup_date) {
+          setErrorMessage("Invalid backup structure: No valid collections (students, payments, expenses, courses, batches) found in the file.");
+          return;
+        }
+
+        setBackupFileToRestore({
+          filename: file.name,
+          data: {
+            backup_date: parsed.backup_date,
+            students,
+            payments,
+            expenses,
+            courses,
+            batches
+          },
+          counts: {
+            students: students.length,
+            payments: payments.length,
+            expenses: expenses.length,
+            courses: courses.length,
+            batches: batches.length
+          }
+        });
+        setShowRestoreModal(true);
+      } catch (err: any) {
+        console.error("Error reading restore file:", err);
+        setErrorMessage(err.message || "Failed to process the backup file.");
+      }
+    };
+
+    reader.onerror = () => {
+      setErrorMessage("Failed to read the selected backup file from your device.");
+    };
+
+    reader.readAsText(file);
+  };
+
+  // 3. Confirm and Execute Restore
+  const handleConfirmRestore = async () => {
+    if (!backupFileToRestore) return;
+
+    setIsRestoring(true);
+    setErrorMessage(null);
+    setSuccessMessage(null);
+
+    try {
+      const { students = [], payments = [], expenses = [], courses = [], batches = [] } = backupFileToRestore.data;
+
+      let restoredStudents = 0;
+      let restoredPayments = 0;
+      let restoredExpenses = 0;
+      let restoredCourses = 0;
+      let restoredBatches = 0;
+
+      // 1. Restore Students
+      for (const s of students) {
+        if (!s || typeof s !== "object") continue;
+        const { id, ...docData } = s;
+        if (id) {
+          await setDoc(doc(db, "students", id), docData);
+          restoredStudents++;
+        }
+      }
+
+      // 2. Restore Payments
+      for (const p of payments) {
+        if (!p || typeof p !== "object") continue;
+        const { id, ...docData } = p;
+        if (id) {
+          await setDoc(doc(db, "payments", id), docData);
+          restoredPayments++;
+        }
+      }
+
+      // 3. Restore Expenses
+      for (const e of expenses) {
+        if (!e || typeof e !== "object") continue;
+        const { id, ...docData } = e;
+        if (id) {
+          await setDoc(doc(db, "expenses", id), docData);
+          restoredExpenses++;
+        }
+      }
+
+      // 4. Restore Courses
+      for (const c of courses) {
+        if (!c || typeof c !== "object") continue;
+        const { id, ...docData } = c;
+        if (id) {
+          await setDoc(doc(db, "courses", id), docData);
+          restoredCourses++;
+        }
+      }
+
+      // 5. Restore Batches
+      for (const b of batches) {
+        if (!b || typeof b !== "object") continue;
+        const { id, ...docData } = b;
+        if (id) {
+          await setDoc(doc(db, "batches", id), docData);
+          restoredBatches++;
+        }
+      }
+
+      setSuccessMessage(
+        `Restore complete: ${restoredStudents} students, ${restoredPayments} payments, ${restoredExpenses} expenses, ${restoredCourses} courses, ${restoredBatches} batches restored into the database.`
+      );
+      setShowRestoreModal(false);
+      setBackupFileToRestore(null);
+    } catch (err: any) {
+      console.error("Failed to restore backup:", err);
+      setErrorMessage(err.message || "An error occurred while restoring data into the database.");
+    } finally {
+      setIsRestoring(false);
+    }
+  };
+
+  // Clear Demo Data Handler
   const handleClearDemoData = async () => {
     if (typedConfirm !== "DELETE") {
       setErrorMessage("Confirmation word does not match.");
@@ -93,8 +354,8 @@ export default function Settings({ adminEmail }: SettingsProps) {
               Settings & Administration
             </h1>
           </div>
-          <p className="text-sm text-slate-400">
-            View system preferences, manage database maintenance, and perform administrative cleanup operations.
+          <p className="text-sm text-slate-400 mt-1">
+            View system preferences, manage database backups, and perform administrative cleanup operations.
           </p>
         </div>
       </div>
@@ -103,20 +364,32 @@ export default function Settings({ adminEmail }: SettingsProps) {
       {successMessage && (
         <div className="bg-teal-500/15 border border-teal-500/30 text-teal-400 px-4 py-3.5 rounded-xl flex items-start gap-3">
           <CheckCircle className="h-5 w-5 mt-0.5 shrink-0" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-bold">Operation Successful</p>
             <p className="text-xs text-slate-300 mt-0.5">{successMessage}</p>
           </div>
+          <button
+            onClick={() => setSuccessMessage(null)}
+            className="text-slate-400 hover:text-white cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
 
       {errorMessage && (
         <div className="bg-rose-500/15 border border-rose-500/30 text-rose-400 px-4 py-3.5 rounded-xl flex items-start gap-3">
           <AlertTriangle className="h-5 w-5 mt-0.5 shrink-0" />
-          <div>
+          <div className="flex-1">
             <p className="text-sm font-bold">Operation Failed</p>
             <p className="text-xs text-slate-300 mt-0.5">{errorMessage}</p>
           </div>
+          <button
+            onClick={() => setErrorMessage(null)}
+            className="text-slate-400 hover:text-white cursor-pointer"
+          >
+            <X className="h-4 w-4" />
+          </button>
         </div>
       )}
 
@@ -142,7 +415,100 @@ export default function Settings({ adminEmail }: SettingsProps) {
         </div>
       </div>
 
-      {/* Danger Zone Section */}
+      {/* SECTION 1: DATA BACKUP (Placed above Danger Zone) */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm space-y-5" id="data-backup-section">
+        <div className="flex items-center justify-between border-b border-slate-800 pb-4">
+          <div className="flex items-center gap-2.5 text-teal-400">
+            <Archive className="h-6 w-6" />
+            <div>
+              <h2 className="text-lg font-bold text-white">Data Backup</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Export and import complete database snapshots for peace of mind and data redundancy.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Explanatory Note */}
+        <div className="bg-teal-500/10 border border-teal-500/20 rounded-lg p-3.5 flex items-start gap-3">
+          <Info className="h-4 w-4 text-teal-400 shrink-0 mt-0.5" />
+          <p className="text-xs text-slate-300 leading-relaxed">
+            We recommend downloading a backup at least once a month and saving it somewhere safe (like Google Drive or your computer), in addition to Firebase&apos;s own reliability.
+          </p>
+        </div>
+
+        {/* Action Buttons Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2">
+          {/* Download Complete Backup Card */}
+          <div className="bg-slate-950/80 border border-slate-800 hover:border-slate-700 rounded-xl p-5 flex flex-col justify-between space-y-4 transition-all">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-teal-400 font-bold text-sm">
+                <FileJson className="h-4 w-4" />
+                <span>Complete Database Snapshot</span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Fetches all students, payment records, expense logs, courses, and batches into a single JSON archive.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={handleDownloadBackup}
+              disabled={isBackingUp}
+              className="w-full py-2.5 px-4 bg-teal-500 hover:bg-teal-600 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-extrabold rounded-lg text-xs sm:text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2"
+              id="download-complete-backup-btn"
+            >
+              {isBackingUp ? (
+                <>
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                  Generating Backup...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4" />
+                  Download Complete Backup
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Restore from Backup Card */}
+          <div className="bg-slate-950/80 border border-slate-800 hover:border-slate-700 rounded-xl p-5 flex flex-col justify-between space-y-4 transition-all">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 text-slate-200 font-bold text-sm">
+                <Upload className="h-4 w-4 text-teal-400" />
+                <span>Database Restoration</span>
+              </div>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Select a previously saved backup JSON file to restore records directly into Firestore with ID preservation.
+              </p>
+            </div>
+
+            <div>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".json,application/json"
+                onChange={handleSelectFile}
+                className="hidden"
+                id="restore-file-input"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isRestoring}
+                className="w-full py-2.5 px-4 bg-slate-800 hover:bg-slate-700 text-slate-200 hover:text-white border border-slate-700 font-bold rounded-lg text-xs sm:text-sm shadow-sm transition-all cursor-pointer flex items-center justify-center gap-2"
+                id="restore-from-backup-btn"
+              >
+                <Upload className="h-4 w-4 text-teal-400" />
+                Restore from Backup
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION 2: DANGER ZONE */}
       <div className="border border-rose-500/30 bg-rose-500/5 rounded-xl p-6 shadow-sm space-y-4" id="danger-zone-section">
         <div className="flex items-center gap-2 text-rose-400">
           <ShieldAlert className="h-6 w-6" />
@@ -169,7 +535,111 @@ export default function Settings({ adminEmail }: SettingsProps) {
         </div>
       </div>
 
-      {/* Confirmation Modal */}
+      {/* Restore Confirmation Dialog Modal */}
+      {showRestoreModal && backupFileToRestore && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm" id="confirm-restore-modal">
+          <div className="bg-slate-900 border border-slate-800 w-full max-w-lg rounded-xl p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+              <div className="flex items-center gap-2.5 text-amber-400">
+                <AlertTriangle className="h-6 w-6 shrink-0" />
+                <h3 className="text-lg font-bold text-white">Confirm Database Restore</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isRestoring) {
+                    setShowRestoreModal(false);
+                    setBackupFileToRestore(null);
+                  }
+                }}
+                className="text-slate-400 hover:text-white cursor-pointer"
+                disabled={isRestoring}
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Warning Text Mandated by Requirement */}
+            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3.5">
+              <p className="text-xs text-amber-200/90 leading-relaxed">
+                Restoring a backup will add all records from this file into the database. If a record with the same ID already exists, it will be overwritten with the backup version. This does not delete any current data that isn&apos;t in the backup file. Are you sure you want to continue?
+              </p>
+            </div>
+
+            {/* Backup Summary Breakdown */}
+            <div className="bg-slate-950 border border-slate-850 rounded-lg p-4 space-y-2.5">
+              <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-850">
+                <span className="text-slate-400 font-medium">Selected Backup File:</span>
+                <span className="font-mono text-teal-400 font-bold truncate max-w-[240px]">{backupFileToRestore.filename}</span>
+              </div>
+              {backupFileToRestore.data.backup_date && (
+                <div className="flex items-center justify-between text-xs pb-2 border-b border-slate-850">
+                  <span className="text-slate-400 font-medium">Backup Timestamp:</span>
+                  <span className="text-slate-300 font-mono text-[11px]">{new Date(backupFileToRestore.data.backup_date).toLocaleString()}</span>
+                </div>
+              )}
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                <div className="bg-slate-900 border border-slate-800 rounded p-2 text-center">
+                  <span className="text-[10px] text-slate-500 uppercase block font-semibold">Students</span>
+                  <span className="text-sm font-bold text-white">{backupFileToRestore.counts.students}</span>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 rounded p-2 text-center">
+                  <span className="text-[10px] text-slate-500 uppercase block font-semibold">Payments</span>
+                  <span className="text-sm font-bold text-white">{backupFileToRestore.counts.payments}</span>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 rounded p-2 text-center">
+                  <span className="text-[10px] text-slate-500 uppercase block font-semibold">Expenses</span>
+                  <span className="text-sm font-bold text-white">{backupFileToRestore.counts.expenses}</span>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 rounded p-2 text-center">
+                  <span className="text-[10px] text-slate-500 uppercase block font-semibold">Courses</span>
+                  <span className="text-sm font-bold text-white">{backupFileToRestore.counts.courses}</span>
+                </div>
+                <div className="bg-slate-900 border border-slate-800 rounded p-2 text-center">
+                  <span className="text-[10px] text-slate-500 uppercase block font-semibold">Batches</span>
+                  <span className="text-sm font-bold text-white">{backupFileToRestore.counts.batches}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowRestoreModal(false);
+                  setBackupFileToRestore(null);
+                }}
+                className="px-4 py-2 bg-slate-950 border border-slate-800 hover:bg-slate-850 text-slate-400 hover:text-white rounded-lg text-xs font-bold transition-colors cursor-pointer"
+                disabled={isRestoring}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isRestoring}
+                onClick={handleConfirmRestore}
+                className="px-4 py-2 bg-teal-500 hover:bg-teal-600 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 rounded-lg text-xs font-extrabold transition-colors cursor-pointer flex items-center gap-2 shadow-md"
+                id="confirm-restore-btn"
+              >
+                {isRestoring ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 animate-spin" />
+                    Restoring Database Records...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Confirm &amp; Restore
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Clear Data Confirmation Modal */}
       {showConfirmModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm" id="confirm-delete-modal">
           <div className="bg-slate-900 border border-slate-800 w-full max-w-md rounded-xl p-6 shadow-2xl space-y-4">

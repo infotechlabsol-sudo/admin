@@ -4,10 +4,17 @@ export interface Lead {
   phone: string;
   email: string;
   address?: string;
+  source?: string;
   course_interest?: string;
+  class_mode?: string;
+  dob?: string;
+  assigned_batch?: string;
+  lead_score?: string;
+  tags?: string;
   converted_to_student?: boolean;
   status?: string;
   student_id?: string;
+  created_timestamp?: any;
 }
 
 export interface CourseOption {

@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Student, CourseOption, BatchOption } from "../types";
-import { Search, Filter, Download, User, ArrowRight, Eye, RefreshCw } from "lucide-react";
+import { Search, Filter, Download, User, ArrowRight, Eye, RefreshCw, FileText } from "lucide-react";
+import ReceiptModal from "./ReceiptModal";
 
 interface StudentListProps {
   students: Student[];
@@ -16,6 +17,9 @@ export default function StudentList({ students, courses = [], batches = [], onSe
   const [courseFilter, setCourseFilter] = useState("All");
   const [statusFilter, setStatusFilter] = useState("All");
   const [batchFilter, setBatchFilter] = useState("All");
+
+  // Quick Receipt Modal State
+  const [receiptModalStudent, setReceiptModalStudent] = useState<Student | null>(null);
 
   // Reset Filters
   const handleResetFilters = () => {
@@ -275,13 +279,23 @@ export default function StudentList({ students, courses = [], batches = [], onSe
                       </span>
                     </td>
                     <td className="py-4 px-6 text-right">
-                      <button
-                        onClick={() => onSelectStudent(s.id)}
-                        className="p-1.5 bg-slate-950 hover:bg-teal-500 hover:text-slate-950 text-slate-400 border border-slate-800 hover:border-teal-500 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                        Details
-                      </button>
+                      <div className="inline-flex items-center gap-2 justify-end">
+                        <button
+                          onClick={() => setReceiptModalStudent(s)}
+                          className="p-1.5 bg-slate-950 hover:bg-slate-800 text-teal-400 border border-slate-800 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold"
+                          title="View Quick Receipt"
+                        >
+                          <FileText className="h-3.5 w-3.5" />
+                          Receipt
+                        </button>
+                        <button
+                          onClick={() => onSelectStudent(s.id)}
+                          className="p-1.5 bg-slate-950 hover:bg-teal-500 hover:text-slate-950 text-slate-400 border border-slate-800 hover:border-teal-500 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1.5 text-xs font-semibold"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                          Details
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -331,13 +345,22 @@ export default function StudentList({ students, courses = [], batches = [], onSe
                     </div>
                   </div>
 
-                  <button
-                    onClick={() => onSelectStudent(s.id)}
-                    className="w-full py-2 bg-slate-950 hover:bg-teal-500 hover:text-slate-950 text-slate-300 font-bold rounded-lg border border-slate-800 hover:border-teal-500 transition-all text-xs flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Eye className="h-4 w-4" />
-                    View Details
-                  </button>
+                  <div className="flex items-center gap-2 pt-1">
+                    <button
+                      onClick={() => setReceiptModalStudent(s)}
+                      className="flex-1 py-2 bg-slate-950 hover:bg-slate-800 text-teal-400 font-bold rounded-lg border border-slate-800 transition-all text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      Receipt
+                    </button>
+                    <button
+                      onClick={() => onSelectStudent(s.id)}
+                      className="flex-1 py-2 bg-slate-950 hover:bg-teal-500 hover:text-slate-950 text-slate-300 font-bold rounded-lg border border-slate-800 hover:border-teal-500 transition-all text-xs flex items-center justify-center gap-1.5 cursor-pointer"
+                    >
+                      <Eye className="h-3.5 w-3.5" />
+                      View Details
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
@@ -354,6 +377,13 @@ export default function StudentList({ students, courses = [], batches = [], onSe
           </div>
         )}
       </div>
+
+      {/* Quick Receipt Modal */}
+      <ReceiptModal
+        isOpen={!!receiptModalStudent}
+        onClose={() => setReceiptModalStudent(null)}
+        student={receiptModalStudent}
+      />
     </div>
   );
 }

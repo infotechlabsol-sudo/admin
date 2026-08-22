@@ -1,9 +1,10 @@
 import React, { useState, useMemo } from "react";
 import { Student, Payment } from "../types";
 import { getReminderEmailUrl, getReminderWhatsAppUrl } from "../reminderService";
+import ReceiptModal from "./ReceiptModal";
 import { 
   Bell, Search, Filter, Mail, MessageSquare, AlertCircle, 
-  Calendar, CreditCard, ChevronRight, CheckCircle2, Info, Clock
+  Calendar, CreditCard, ChevronRight, CheckCircle2, Info, Clock, FileText
 } from "lucide-react";
 
 interface FeeRemindersProps {
@@ -15,6 +16,7 @@ interface FeeRemindersProps {
 export default function FeeReminders({ students, payments, onSelectStudent }: FeeRemindersProps) {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMode, setFilterMode] = useState<"All" | "Due" | "NotDue">("All");
+  const [receiptModalStudent, setReceiptModalStudent] = useState<Student | null>(null);
 
   const todayStr = useMemo(() => new Date().toISOString().substring(0, 10), []);
 
@@ -285,6 +287,15 @@ export default function FeeReminders({ students, payments, onSelectStudent }: Fe
                       </a>
 
                       <button
+                        onClick={() => setReceiptModalStudent(s)}
+                        className="bg-slate-950 hover:bg-slate-800 border border-slate-800 text-teal-400 font-semibold rounded-lg py-2 px-3 transition-colors text-xs flex items-center gap-1.5 cursor-pointer"
+                        title="View Quick Receipt"
+                      >
+                        <FileText className="h-3.5 w-3.5 text-teal-400" />
+                        Receipt
+                      </button>
+
+                      <button
                         onClick={() => onSelectStudent(s.id)}
                         className="p-2 bg-slate-950 hover:bg-slate-800 border border-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer"
                         title="View Full Student Details"
@@ -307,6 +318,14 @@ export default function FeeReminders({ students, payments, onSelectStudent }: Fe
           </div>
         )}
       </div>
+
+      {/* Quick Receipt Modal */}
+      <ReceiptModal
+        isOpen={!!receiptModalStudent}
+        onClose={() => setReceiptModalStudent(null)}
+        student={receiptModalStudent}
+        paymentsList={payments.filter((p) => p.student_id === receiptModalStudent?.id)}
+      />
     </div>
   );
 }

@@ -13,8 +13,9 @@ import Finance from "./components/Finance";
 import FeeReminders from "./components/FeeReminders";
 import Birthdays from "./components/Birthdays";
 import Settings from "./components/Settings";
+import ImportLeads from "./components/ImportLeads";
 import { 
-  Award, LayoutDashboard, UserPlus, Users, LogOut, Loader2, Sparkles, TrendingUp, Bell, Cake, Sun, Moon, Sliders, Menu, X
+  Award, LayoutDashboard, UserPlus, Users, LogOut, Loader2, Sparkles, TrendingUp, Bell, Cake, Sun, Moon, Sliders, Menu, X, FileSpreadsheet
 } from "lucide-react";
 
 export default function App() {
@@ -44,7 +45,7 @@ export default function App() {
   };
 
   // Navigation / View state
-  const [currentView, setCurrentView] = useState<"dashboard" | "admission" | "students" | "detail" | "finance" | "reminders" | "birthdays" | "settings">("dashboard");
+  const [currentView, setCurrentView] = useState<"dashboard" | "admission" | "import-leads" | "students" | "detail" | "finance" | "reminders" | "birthdays" | "settings">("dashboard");
   const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
   const [selectedLeadId, setSelectedLeadId] = useState<string | undefined>(undefined);
 
@@ -292,6 +293,19 @@ export default function App() {
             </button>
 
             <button
+              onClick={() => { setCurrentView("import-leads"); setSelectedStudentId(null); setMobileMenuOpen(false); }}
+              className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
+                currentView === "import-leads"
+                  ? "bg-teal-500/10 text-teal-400 border border-teal-500/20"
+                  : "text-slate-400 hover:text-white border border-transparent"
+              }`}
+              id="nav-import-leads-btn"
+            >
+              <FileSpreadsheet className="h-4 w-4 text-teal-400" />
+              Import Leads
+            </button>
+
+            <button
               onClick={() => { setCurrentView("students"); setSelectedStudentId(null); setMobileMenuOpen(false); }}
               className={`px-3 py-2 rounded-lg text-xs font-bold transition-colors cursor-pointer flex items-center gap-1.5 ${
                 currentView === "students" || currentView === "detail"
@@ -408,6 +422,15 @@ export default function App() {
           >
             <UserPlus className="h-3.5 w-3.5" />
             Enroll
+          </button>
+          <button
+            onClick={() => { setCurrentView("import-leads"); setSelectedStudentId(null); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-bold shrink-0 flex items-center gap-1.5 ${
+              currentView === "import-leads" ? "bg-teal-500/20 text-teal-300 border border-teal-500/30" : "bg-slate-950 text-slate-400 border border-slate-800"
+            }`}
+          >
+            <FileSpreadsheet className="h-3.5 w-3.5 text-teal-400" />
+            Import Leads
           </button>
           <button
             onClick={() => { setCurrentView("students"); setSelectedStudentId(null); }}
@@ -574,6 +597,19 @@ export default function App() {
                 onCancel={() => {
                   setSelectedLeadId(undefined);
                   setCurrentView("dashboard");
+                }}
+              />
+            )}
+
+            {currentView === "import-leads" && (
+              <ImportLeads 
+                onNavigateToAdmission={(leadId) => {
+                  if (leadId) {
+                    setSelectedLeadId(leadId);
+                  } else {
+                    setSelectedLeadId(undefined);
+                  }
+                  setCurrentView("admission");
                 }}
               />
             )}

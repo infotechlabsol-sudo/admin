@@ -4,10 +4,11 @@ import { db, handleFirestoreError, OperationType } from "../firebase";
 import { doc, updateDoc, collection, addDoc, query, where, onSnapshot, getDocs, deleteField } from "firebase/firestore";
 import { sendPaymentEmail, sendCertificateEmail } from "../emailService";
 import { getReminderEmailUrl, getReminderWhatsAppUrl } from "../reminderService";
+import ReceiptModal from "./ReceiptModal";
 import { 
   ArrowLeft, CreditCard, Award, Calendar, Phone, Mail, MapPin, 
   User, CheckCircle2, AlertCircle, Plus, Edit, ShieldCheck, Loader, FileText, AlertTriangle,
-  MessageSquare, Send, Clock
+  MessageSquare, Send, Clock, Printer
 } from "lucide-react";
 
 interface StudentDetailProps {
@@ -61,6 +62,11 @@ export default function StudentDetail({ studentId, courses = [], batches = [], o
   // Certificate Form States
   const [certStatus, setCertStatus] = useState<CertificateStatus>("Not Issued");
   const [certIssueDate, setCertIssueDate] = useState("");
+
+  // Receipt Modal States
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
+  const [selectedReceiptPayment, setSelectedReceiptPayment] = useState<Payment | null>(null);
+  const [receiptModalType, setReceiptModalType] = useState<"payment" | "admission">("payment");
 
   // Set up listeners for student details and associated payments
   useEffect(() => {
@@ -437,6 +443,19 @@ export default function StudentDetail({ studentId, courses = [], batches = [], o
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
+          <button
+            onClick={() => {
+              setSelectedReceiptPayment(null);
+              setReceiptModalType("admission");
+              setShowReceiptModal(true);
+            }}
+            className="flex-1 sm:flex-none justify-center bg-slate-900 hover:bg-slate-800 border border-slate-800 text-amber-400 font-semibold rounded-lg py-2 px-3 transition-colors text-xs flex items-center gap-1.5 cursor-pointer"
+            title="View Admission Confirmation Slip"
+          >
+            <FileText className="h-3.5 w-3.5 text-amber-400" />
+            Admission Receipt
+          </button>
+
           <a
             href={getReminderEmailUrl({
               name: student.name,
@@ -885,6 +904,7 @@ export default function StudentDetail({ studentId, courses = [], batches = [], o
                       <th className="py-3 px-2">Description</th>
                       <th className="py-3 px-2">Mode</th>
                       <th className="py-3 px-2 text-right">Amount</th>
+                      <th className="py-3 px-2 text-right">Receipt</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-850">
@@ -897,6 +917,20 @@ export default function StudentDetail({ studentId, courses = [], batches = [], o
                         </td>
                         <td className="py-3 px-2 font-mono text-xs uppercase text-slate-400">{p.mode}</td>
                         <td className="py-3 px-2 text-right font-bold text-emerald-400">₹{p.amount.toLocaleString()}</td>
+                        <td className="py-3 px-2 text-right">
+                          <button
+                            onClick={() => {
+                              setSelectedReceiptPayment(p);
+                              setReceiptModalType("payment");
+                              setShowReceiptModal(true);
+                            }}
+                            className="p-1.5 bg-slate-950 hover:bg-teal-500 hover:text-slate-950 text-teal-400 border border-slate-800 hover:border-teal-500 rounded-lg transition-all cursor-pointer inline-flex items-center gap-1 text-xs font-semibold"
+                            title="View Receipt for this payment"
+                          >
+                            <FileText className="h-3.5 w-3.5" />
+                            Receipt
+                          </button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -1105,6 +1139,16 @@ export default function StudentDetail({ studentId, courses = [], batches = [], o
           </div>
         </div>
       </div>
+
+      {/* Receipt Modal */}
+      <ReceiptModal
+        isOpen={showReceiptModal}
+        onClose={() => setShowReceiptModal(false)}
+        student={student}
+        selectedPayment={selectedReceiptPayment}
+        paymentsList={payments}
+        receiptType={receiptModalType}
+      />
     </div>
   );
 }

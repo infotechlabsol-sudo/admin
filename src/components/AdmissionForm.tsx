@@ -111,6 +111,7 @@ export default function AdmissionForm({ courses = [], batches = [], leadId, onSu
           setPhone(data.phone || "");
           setEmail(data.email || "");
           setAddress(data.address || "");
+          if (data.dob) setDob(data.dob);
           if (data.course_interest) {
             setCourseType(mapCourseInterest(data.course_interest, activeCourses));
           }
@@ -282,23 +283,58 @@ export default function AdmissionForm({ courses = [], batches = [], leadId, onSu
         {/* Print only CSS styles */}
         <style dangerouslySetInnerHTML={{ __html: `
           @media print {
-            body * {
-              visibility: hidden;
+            @page {
+              size: portrait;
+              margin: 8mm 10mm;
             }
-            #admission-slip-print, #admission-slip-print * {
-              visibility: visible;
-            }
-            #admission-slip-print {
-              position: absolute;
-              left: 0;
-              top: 0;
-              width: 100%;
+
+            html, body, #root {
+              height: 100% !important;
+              max-height: 100vh !important;
+              overflow: hidden !important;
+              margin: 0 !important;
+              padding: 0 !important;
+              background: #ffffff !important;
               color: #000000 !important;
-              background-color: #ffffff !important;
-              padding: 24px;
             }
-            .no-print {
+
+            body * {
+              visibility: hidden !important;
+            }
+
+            .no-print,
+            .no-print * {
               display: none !important;
+              height: 0 !important;
+              overflow: hidden !important;
+              visibility: hidden !important;
+            }
+
+            #admission-slip-print,
+            #admission-slip-print * {
+              visibility: visible !important;
+            }
+
+            #admission-slip-print {
+              position: fixed !important;
+              left: 0 !important;
+              top: 0 !important;
+              width: 100% !important;
+              max-width: 100% !important;
+              height: auto !important;
+              max-height: 100% !important;
+              margin: 0 !important;
+              padding: 16px 20px !important;
+              box-shadow: none !important;
+              border: 1px solid #cbd5e1 !important;
+              border-radius: 8px !important;
+              background-color: #ffffff !important;
+              color: #000000 !important;
+              z-index: 999999 !important;
+              page-break-inside: avoid !important;
+              break-inside: avoid !important;
+              overflow: visible !important;
+              box-sizing: border-box !important;
             }
           }
         `}} />
@@ -323,32 +359,32 @@ export default function AdmissionForm({ courses = [], batches = [], leadId, onSu
 
         {/* Printable Slips & Details */}
         <div 
-          className="bg-slate-900 border border-slate-800 rounded-xl p-8 shadow-xl space-y-6 print:bg-white print:text-black print:border-none print:shadow-none"
+          className="bg-slate-900 border border-slate-800 rounded-xl p-6 sm:p-8 shadow-xl space-y-5 print:p-5 print:space-y-3.5 print:bg-white print:text-black print:border-slate-300 print:shadow-none"
           id="admission-slip-print"
         >
           {/* Slip Header */}
-          <div className="flex justify-between items-start border-b border-slate-800 pb-5 print:border-black">
+          <div className="flex justify-between items-start border-b border-slate-800 pb-4 print:pb-2.5 print:border-slate-300">
             <div>
-              <h1 className="text-xl font-bold tracking-tight text-teal-400 print:text-black">TECH LAB ACADEMY</h1>
+              <h1 className="text-xl font-bold tracking-tight text-teal-400 print:text-black print:text-lg">TECH LAB ACADEMY</h1>
               <p className="text-xs text-slate-400 print:text-black">Professional Creative & Software Training Suite</p>
-              <p className="text-xs text-slate-500 print:text-black mt-1">info.techlabsol@gmail.com</p>
+              <p className="text-xs text-slate-500 print:text-black mt-0.5">info.techlabsol@gmail.com</p>
             </div>
             <div className="text-right">
-              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest block">Admission Slip</span>
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest block print:text-black">Admission Slip</span>
               <span className="text-xs text-slate-400 print:text-black block mt-0.5">Date: {successData.admissionDate}</span>
             </div>
           </div>
 
           {/* Registration highlight */}
-          <div className="bg-slate-950 border border-slate-800 rounded-lg p-4 text-center print:bg-slate-100 print:border-black">
-            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block">Registration Number</span>
-            <span className="text-2xl font-black text-teal-400 tracking-widest print:text-black">{successData.registrationNumber}</span>
+          <div className="bg-slate-950 border border-slate-800 rounded-lg p-3 sm:p-4 text-center print:bg-slate-100 print:border-slate-300 print:py-2">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider block print:text-black">Registration Number</span>
+            <span className="text-2xl font-black text-teal-400 tracking-widest print:text-black print:text-xl">{successData.registrationNumber}</span>
           </div>
 
           {/* Student & Course Particulars */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
-            <div className="space-y-2.5">
-              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 pb-1 border-b border-slate-800 print:border-black print:text-black">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm print:grid-cols-2 print:gap-4 print:text-xs">
+            <div className="space-y-2.5 print:space-y-1">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 pb-1 border-b border-slate-800 print:border-slate-300 print:text-black">
                 Student Details
               </h3>
               <div className="flex justify-between"><span className="text-slate-400 print:text-black">Full Name</span><span className="font-semibold text-white print:text-black">{successData.studentName}</span></div>
@@ -356,9 +392,9 @@ export default function AdmissionForm({ courses = [], batches = [], leadId, onSu
               <div className="flex justify-between"><span className="text-slate-400 print:text-black">Phone Number</span><span className="font-semibold text-white print:text-black">{phone}</span></div>
             </div>
 
-            <div className="space-y-2.5">
-              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 pb-1 border-b border-slate-800 print:border-black print:text-black">
-                Course particulars
+            <div className="space-y-2.5 print:space-y-1">
+              <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 pb-1 border-b border-slate-800 print:border-slate-300 print:text-black">
+                Course Particulars
               </h3>
               <div className="flex justify-between"><span className="text-slate-400 print:text-black">Course Enrolled</span><span className="font-semibold text-white print:text-black">{successData.course}</span></div>
               <div className="flex justify-between"><span className="text-slate-400 print:text-black">Batch Start</span><span className="font-semibold text-white print:text-black">{successData.batchStart}</span></div>
@@ -367,11 +403,11 @@ export default function AdmissionForm({ courses = [], batches = [], leadId, onSu
           </div>
 
           {/* Fee Breakdown */}
-          <div className="border-t border-slate-800 pt-5 print:border-black">
-            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 pb-2 border-b border-slate-800 print:border-black print:text-black mb-3">
+          <div className="border-t border-slate-800 pt-4 print:pt-2.5 print:border-slate-300">
+            <h3 className="font-bold text-xs uppercase tracking-wider text-slate-400 pb-2 print:pb-1 border-b border-slate-800 print:border-slate-300 print:text-black mb-2.5 print:mb-1.5">
               Fee Ledger Summary
             </h3>
-            <div className="space-y-2.5 text-sm">
+            <div className="space-y-2.5 print:space-y-1 text-sm print:text-xs">
               <div className="flex justify-between">
                 <span className="text-slate-400 print:text-black">Total Course Fee</span>
                 <span className="font-bold text-white print:text-black">₹{successData.totalFees.toLocaleString()}</span>
@@ -380,20 +416,20 @@ export default function AdmissionForm({ courses = [], batches = [], leadId, onSu
                 <span className="font-medium">Admission Fees Paid</span>
                 <span className="font-extrabold">₹{successData.paidAmount.toLocaleString()}</span>
               </div>
-              <div className="flex justify-between items-center pt-2.5 border-t border-slate-800 print:border-black">
+              <div className="flex justify-between items-center pt-2 print:pt-1 border-t border-slate-800 print:border-slate-300">
                 <span className="font-bold text-slate-300 print:text-black">Remaining Balance Due</span>
-                <span className="text-lg font-black text-rose-400 print:text-black">₹{successData.remainingFees.toLocaleString()}</span>
+                <span className="text-lg font-black text-rose-400 print:text-black print:text-sm">₹{successData.remainingFees.toLocaleString()}</span>
               </div>
             </div>
           </div>
 
           {/* Footer of receipt */}
-          <div className="pt-8 border-t border-slate-800 flex justify-between items-end text-[10px] text-slate-500 print:border-black print:text-black">
+          <div className="pt-5 print:pt-3 border-t border-slate-800 print:border-slate-300 flex justify-between items-end text-[10px] text-slate-500 print:text-black">
             <div>
               <p>Verified on {successData.admissionDate}</p>
               <p className="mt-0.5">System Generated Admission Slip.</p>
             </div>
-            <div className="text-right w-40 border-t border-slate-700 pt-4 print:border-black">
+            <div className="text-right w-40 border-t border-slate-700 print:border-slate-400 pt-2 text-slate-900">
               <p className="font-bold">Authorized Signature</p>
             </div>
           </div>
