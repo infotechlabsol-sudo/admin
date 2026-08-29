@@ -3,8 +3,9 @@ import { Student, Payment, CourseType, StudentStatus, CertificateStatus, CourseO
 import { db, handleFirestoreError, OperationType } from "../firebase";
 import { doc, updateDoc, collection, addDoc, query, where, onSnapshot, getDocs, deleteField } from "firebase/firestore";
 import { sendPaymentEmail, sendCertificateEmail } from "../emailService";
-import { getReminderEmailUrl, getReminderWhatsAppUrl } from "../reminderService";
+import { getReminderEmailUrl } from "../reminderService";
 import ReceiptModal from "./ReceiptModal";
+import WhatsAppModal from "./WhatsAppModal";
 import { 
   ArrowLeft, CreditCard, Award, Calendar, Phone, Mail, MapPin, 
   User, CheckCircle2, AlertCircle, Plus, Edit, ShieldCheck, Loader, FileText, AlertTriangle,
@@ -67,6 +68,9 @@ export default function StudentDetail({ studentId, courses = [], batches = [], o
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const [selectedReceiptPayment, setSelectedReceiptPayment] = useState<Payment | null>(null);
   const [receiptModalType, setReceiptModalType] = useState<"payment" | "admission">("payment");
+
+  // WhatsApp Modal State
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
 
   // Set up listeners for student details and associated payments
   useEffect(() => {
@@ -476,25 +480,15 @@ export default function StudentDetail({ studentId, courses = [], batches = [], o
             Email Reminder
           </a>
 
-          <a
-            href={getReminderWhatsAppUrl({
-              name: student.name,
-              phone: student.phone,
-              email: student.email,
-              registration_number: student.registration_number,
-              course_type: student.course_type,
-              total_fees: student.total_fees,
-              totalPaid: totalPaid,
-              remaining_fees: liveRemainingFees
-            })}
-            target="_blank"
-            rel="noopener noreferrer"
+          <button
+            type="button"
+            onClick={() => setShowWhatsAppModal(true)}
             className="flex-1 sm:flex-none justify-center bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-400 font-semibold rounded-lg py-2 px-3 transition-colors text-xs flex items-center gap-1.5 cursor-pointer"
-            title="Send WhatsApp Reminder via WhatsApp Web"
+            title="Send WhatsApp Message"
           >
             <MessageSquare className="h-3.5 w-3.5" />
             WhatsApp
-          </a>
+          </button>
 
           <button
             onClick={() => setIsEditMode(!isEditMode)}
@@ -1148,6 +1142,30 @@ export default function StudentDetail({ studentId, courses = [], batches = [], o
         selectedPayment={selectedReceiptPayment}
         paymentsList={payments}
         receiptType={receiptModalType}
+      />
+
+      {/* WhatsApp Message Compose Modal */}
+      <WhatsAppModal
+        isOpen={showWhatsAppModal}
+        onClose={() => setShowWhatsAppModal(false)}
+        recipient={
+          student
+            ? {
+                name: student.name,
+                phone: student.phone,
+                email: student.email,
+                registration_number: student.registration_number,
+                course_type: student.course_type,
+                total_fees: student.total_fees,
+                totalPaid: totalPaid,
+                remaining_fees: liveRemainingFees,
+                admission_date: student.admission_date,
+                batch_start_date: student.batch_start_date,
+                dob: student.dob
+              }
+            : null
+        }
+        defaultTemplateCategory={liveRemainingFees > 0 ? "fee_reminder" : "general"}
       />
     </div>
   );

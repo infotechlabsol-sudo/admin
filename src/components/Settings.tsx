@@ -1,6 +1,12 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { collection, getDocs, doc, deleteDoc, setDoc } from "firebase/firestore";
 import { db, handleFirestoreError, OperationType } from "../firebase";
+import {
+  getMessageTemplates,
+  saveMessageTemplates,
+  resetMessageTemplatesToDefault,
+  MessageTemplate
+} from "../templateService";
 import {
   Sliders,
   ShieldAlert,
@@ -15,7 +21,12 @@ import {
   Archive,
   RefreshCw,
   X,
-  FileSpreadsheet
+  FileSpreadsheet,
+  MessageSquare,
+  FileText,
+  Save,
+  RotateCcw,
+  Plus
 } from "lucide-react";
 
 interface SettingsProps {
@@ -58,6 +69,64 @@ export default function Settings({ adminEmail }: SettingsProps) {
   // Notifications
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // Message Templates states
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
+  const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState<string>("tpl_fee_reminder");
+  const [templateEditTitle, setTemplateEditTitle] = useState("");
+  const [templateEditBody, setTemplateEditBody] = useState("");
+  const [isTemplateSaved, setIsTemplateSaved] = useState(false);
+
+  useEffect(() => {
+    const loaded = getMessageTemplates();
+    setTemplates(loaded);
+    const initial = loaded.find((t) => t.id === "tpl_fee_reminder") || loaded[0];
+    if (initial) {
+      setSelectedTemplateForEdit(initial.id);
+      setTemplateEditTitle(initial.title);
+      setTemplateEditBody(initial.body);
+    }
+  }, []);
+
+  const handleSelectTemplateToEdit = (id: string) => {
+    setSelectedTemplateForEdit(id);
+    const match = templates.find((t) => t.id === id);
+    if (match) {
+      setTemplateEditTitle(match.title);
+      setTemplateEditBody(match.body);
+      setIsTemplateSaved(false);
+    }
+  };
+
+  const handleSaveCurrentTemplate = () => {
+    const updated = templates.map((t) => {
+      if (t.id === selectedTemplateForEdit) {
+        return {
+          ...t,
+          title: templateEditTitle,
+          body: templateEditBody
+        };
+      }
+      return t;
+    });
+    setTemplates(updated);
+    saveMessageTemplates(updated);
+    setIsTemplateSaved(true);
+    setSuccessMessage(`Template "${templateEditTitle}" saved successfully.`);
+    setTimeout(() => setIsTemplateSaved(false), 3000);
+  };
+
+  const handleResetTemplates = () => {
+    const reset = resetMessageTemplatesToDefault();
+    setTemplates(reset);
+    const initial = reset.find((t) => t.id === selectedTemplateForEdit) || reset[0];
+    if (initial) {
+      setSelectedTemplateForEdit(initial.id);
+      setTemplateEditTitle(initial.title);
+      setTemplateEditBody(initial.body);
+    }
+    setSuccessMessage("Message templates have been reset to default.");
+  };
 
   // 1. Download Complete Backup
   const handleDownloadBackup = async () => {
@@ -502,6 +571,122 @@ export default function Settings({ adminEmail }: SettingsProps) {
               >
                 <Upload className="h-4 w-4 text-teal-400" />
                 Restore from Backup
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* SECTION: MESSAGE TEMPLATES */}
+      <div className="bg-slate-900 border border-slate-800 rounded-xl p-6 shadow-sm space-y-5" id="message-templates-section">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-4">
+          <div className="flex items-center gap-2.5 text-emerald-400">
+            <MessageSquare className="h-6 w-6" />
+            <div>
+              <h2 className="text-lg font-bold text-white">WhatsApp & Message Templates</h2>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Customize predefined message templates for reminders, birthday wishes, and admission communications.
+              </p>
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={handleResetTemplates}
+            className="px-3 py-1.5 bg-slate-950 hover:bg-slate-800 text-slate-400 hover:text-white border border-slate-800 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer self-start sm:self-center"
+            title="Reset templates to factory defaults"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            Reset Defaults
+          </button>
+        </div>
+
+        {/* Template Selector Tabs */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-thin">
+            {templates.map((tpl) => (
+              <button
+                key={tpl.id}
+                type="button"
+                onClick={() => handleSelectTemplateToEdit(tpl.id)}
+                className={`px-3 py-2 rounded-lg text-xs font-bold whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  selectedTemplateForEdit === tpl.id
+                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs"
+                    : "bg-slate-950 border border-slate-800 text-slate-400 hover:text-white"
+                }`}
+              >
+                <FileText className="h-3.5 w-3.5" />
+                {tpl.title}
+              </button>
+            ))}
+          </div>
+
+          {/* Template Editor Box */}
+          <div className="bg-slate-950 border border-slate-850 rounded-xl p-4 sm:p-5 space-y-4">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300 block">Template Title</label>
+              <input
+                type="text"
+                value={templateEditTitle}
+                onChange={(e) => setTemplateEditTitle(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg px-3 py-2 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500 transition-colors"
+                placeholder="Template Title"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-semibold text-slate-300 block">Message Body</label>
+                <span className="text-[11px] text-slate-500 font-mono">
+                  {templateEditBody.length} chars
+                </span>
+              </div>
+              <textarea
+                rows={5}
+                value={templateEditBody}
+                onChange={(e) => setTemplateEditBody(e.target.value)}
+                className="w-full bg-slate-900 border border-slate-800 rounded-lg p-3 text-white text-xs sm:text-sm focus:outline-none focus:border-emerald-500 transition-colors leading-relaxed font-sans"
+                placeholder="Write your template text with placeholders..."
+              />
+            </div>
+
+            {/* Placeholders Help Box */}
+            <div className="bg-slate-900/80 border border-slate-800/80 rounded-lg p-3 space-y-1.5">
+              <span className="text-[10px] uppercase font-bold text-slate-400 block tracking-wider">
+                Available Dynamic Placeholders
+              </span>
+              <div className="flex flex-wrap gap-1.5 text-[11px]">
+                {["{{name}}", "{{phone}}", "{{registration_number}}", "{{course_type}}", "{{remaining_fees}}", "{{total_fees}}", "{{total_paid}}", "{{batch_start_date}}"].map((token) => (
+                  <span
+                    key={token}
+                    onClick={() => setTemplateEditBody((prev) => prev + " " + token)}
+                    className="font-mono bg-slate-950 text-emerald-400 hover:text-white hover:bg-emerald-950/60 border border-slate-800 px-2 py-0.5 rounded cursor-pointer transition-colors"
+                    title="Click to insert at end"
+                  >
+                    {token}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Save Button */}
+            <div className="flex items-center justify-end gap-3 pt-2 border-t border-slate-850">
+              <button
+                type="button"
+                onClick={handleSaveCurrentTemplate}
+                className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-lg text-xs sm:text-sm font-bold transition-colors cursor-pointer flex items-center gap-2 shadow-md"
+              >
+                {isTemplateSaved ? (
+                  <>
+                    <CheckCircle className="h-4 w-4" />
+                    Saved!
+                  </>
+                ) : (
+                  <>
+                    <Save className="h-4 w-4" />
+                    Save Template
+                  </>
+                )}
               </button>
             </div>
           </div>

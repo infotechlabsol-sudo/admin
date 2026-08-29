@@ -1,7 +1,9 @@
 import React, { useState, useMemo } from "react";
 import { Student, Payment } from "../types";
-import { getReminderEmailUrl, getReminderWhatsAppUrl } from "../reminderService";
+import { getReminderEmailUrl } from "../reminderService";
 import ReceiptModal from "./ReceiptModal";
+import WhatsAppModal from "./WhatsAppModal";
+import { LeadOrStudentData } from "../templateService";
 import { 
   Bell, Search, Filter, Mail, MessageSquare, AlertCircle, 
   Calendar, CreditCard, ChevronRight, CheckCircle2, Info, Clock, FileText
@@ -17,6 +19,7 @@ export default function FeeReminders({ students, payments, onSelectStudent }: Fe
   const [searchTerm, setSearchTerm] = useState("");
   const [filterMode, setFilterMode] = useState<"All" | "Due" | "NotDue">("All");
   const [receiptModalStudent, setReceiptModalStudent] = useState<Student | null>(null);
+  const [whatsAppRecipient, setWhatsAppRecipient] = useState<LeadOrStudentData | null>(null);
 
   const todayStr = useMemo(() => new Date().toISOString().substring(0, 10), []);
 
@@ -275,16 +278,28 @@ export default function FeeReminders({ students, payments, onSelectStudent }: Fe
                         Email Reminder
                       </a>
 
-                      <a
-                        href={getReminderWhatsAppUrl(reminderData)}
-                        target="_blank"
-                        rel="noopener noreferrer"
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setWhatsAppRecipient({
+                            name: s.name,
+                            phone: s.phone,
+                            email: s.email,
+                            registration_number: s.registration_number,
+                            course_type: s.course_type,
+                            total_fees: s.total_fees,
+                            totalPaid: s.totalPaid,
+                            remaining_fees: s.remaining_fees,
+                            admission_date: s.admission_date,
+                            batch_start_date: s.batch_start_date
+                          })
+                        }
                         className="bg-emerald-950/60 hover:bg-emerald-900/60 border border-emerald-800/60 text-emerald-400 font-semibold rounded-lg py-2 px-3 transition-colors text-xs flex items-center gap-1.5 cursor-pointer"
-                        title="Send WhatsApp Reminder via WhatsApp Web"
+                        title="Send WhatsApp Reminder"
                       >
                         <MessageSquare className="h-3.5 w-3.5 text-emerald-400" />
                         WhatsApp
-                      </a>
+                      </button>
 
                       <button
                         onClick={() => setReceiptModalStudent(s)}
@@ -325,6 +340,14 @@ export default function FeeReminders({ students, payments, onSelectStudent }: Fe
         onClose={() => setReceiptModalStudent(null)}
         student={receiptModalStudent}
         paymentsList={payments.filter((p) => p.student_id === receiptModalStudent?.id)}
+      />
+
+      {/* WhatsApp Message Compose Modal */}
+      <WhatsAppModal
+        isOpen={!!whatsAppRecipient}
+        onClose={() => setWhatsAppRecipient(null)}
+        recipient={whatsAppRecipient}
+        defaultTemplateCategory="fee_reminder"
       />
     </div>
   );

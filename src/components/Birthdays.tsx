@@ -1,5 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Student } from "../types";
+import WhatsAppModal from "./WhatsAppModal";
+import { LeadOrStudentData } from "../templateService";
 import { Cake, Mail, MessageSquare, Calendar, Gift, Info } from "lucide-react";
 
 // EDITABLE CONSTANTS FOR BIRTHDAY MESSAGES
@@ -41,6 +43,7 @@ interface BirthdaysProps {
 }
 
 export default function Birthdays({ students }: BirthdaysProps) {
+  const [whatsAppRecipient, setWhatsAppRecipient] = useState<LeadOrStudentData | null>(null);
   const today = useMemo(() => new Date(), []);
 
   const MONTH_NAMES = [
@@ -184,16 +187,24 @@ export default function Birthdays({ students }: BirthdaysProps) {
                     <Mail className="h-3.5 w-3.5 text-teal-400" />
                     Send Email
                   </a>
-                  <a
-                    href={getBirthdayWhatsAppUrl(student.name, student.phone)}
-                    target="_blank"
-                    rel="noopener noreferrer"
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setWhatsAppRecipient({
+                        name: student.name,
+                        phone: student.phone,
+                        email: student.email,
+                        registration_number: student.registration_number,
+                        course_type: student.course_type,
+                        dob: student.dob
+                      })
+                    }
                     className="flex items-center justify-center gap-1.5 bg-teal-500 hover:bg-teal-600 text-slate-950 px-2 py-2 rounded-lg text-[11px] font-bold transition-colors text-center cursor-pointer"
                     title="Send Birthday WhatsApp Wish"
                   >
                     <MessageSquare className="h-3.5 w-3.5" />
                     WhatsApp Wish
-                  </a>
+                  </button>
                 </div>
               </div>
             ))}
@@ -252,15 +263,23 @@ export default function Birthdays({ students }: BirthdaysProps) {
                         >
                           <Mail className="h-4 w-4 text-teal-400" />
                         </a>
-                        <a
-                          href={getBirthdayWhatsAppUrl(student.name, student.phone)}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setWhatsAppRecipient({
+                              name: student.name,
+                              phone: student.phone,
+                              email: student.email,
+                              registration_number: student.registration_number,
+                              course_type: student.course_type,
+                              dob: student.dob
+                            })
+                          }
                           className="p-2 bg-teal-500 hover:bg-teal-600 text-slate-950 rounded-lg transition-colors cursor-pointer flex items-center justify-center"
                           title="Send Birthday WhatsApp Wish"
                         >
                           <MessageSquare className="h-4 w-4" />
-                        </a>
+                        </button>
                       </div>
                     </td>
                   </tr>
@@ -274,6 +293,14 @@ export default function Birthdays({ students }: BirthdaysProps) {
           </div>
         )}
       </div>
+
+      {/* WhatsApp Modal */}
+      <WhatsAppModal
+        isOpen={!!whatsAppRecipient}
+        onClose={() => setWhatsAppRecipient(null)}
+        recipient={whatsAppRecipient}
+        defaultTemplateCategory="birthday"
+      />
     </div>
   );
 }

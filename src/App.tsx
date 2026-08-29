@@ -14,6 +14,7 @@ import FeeReminders from "./components/FeeReminders";
 import Birthdays from "./components/Birthdays";
 import Settings from "./components/Settings";
 import ImportLeads from "./components/ImportLeads";
+import NotificationCenter from "./components/NotificationCenter";
 import { 
   Award, LayoutDashboard, UserPlus, Users, LogOut, Loader2, Sparkles, TrendingUp, Bell, Cake, Sun, Moon, Sliders, Menu, X, FileSpreadsheet
 } from "lucide-react";
@@ -374,8 +375,23 @@ export default function App() {
             </button>
           </div>
 
-          {/* User Sign-Out & Theme Actions */}
+          {/* Notification Bell, User Sign-Out & Theme Actions */}
           <div className="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-slate-800">
+            <NotificationCenter
+              students={students}
+              payments={payments}
+              onNavigate={(view) => {
+                setCurrentView(view);
+                setSelectedStudentId(null);
+                setMobileMenuOpen(false);
+              }}
+              onSelectStudent={(studentId) => {
+                setSelectedStudentId(studentId);
+                setCurrentView("detail");
+                setMobileMenuOpen(false);
+              }}
+            />
+
             <button
               onClick={toggleTheme}
               className="p-1.5 sm:p-2 bg-slate-950 border border-slate-800 hover:bg-slate-800 text-slate-400 hover:text-white rounded-lg transition-colors cursor-pointer flex items-center justify-center shrink-0"

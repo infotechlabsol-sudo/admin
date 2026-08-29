@@ -111,7 +111,7 @@ export default function AdminLogin({ onSuccess, onGoToVerify }: AdminLoginProps)
               <input
                 type="email"
                 required
-                autoComplete="email"
+                autoComplete="username"
                 className="w-full bg-slate-950 border border-slate-800 rounded-lg py-2.5 pl-10 pr-4 text-white text-sm focus:outline-none focus:border-teal-500 transition-colors placeholder:text-slate-600"
                 placeholder="admin@techlabacademy.com"
                 value={email}
